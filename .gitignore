@@ -1,0 +1,8 @@
+build_*
+*.o
+*.pyc
+*.kdev*
+.project
+.cproject
+.settings
+*.cmake.user*
