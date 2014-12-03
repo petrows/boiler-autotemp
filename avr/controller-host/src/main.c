@@ -20,12 +20,24 @@
 #include "lcd_lib.h"
 #include "encoder.h"
 
+void encoderUpdate(void);
+
 // =============================
 // Global vars
 
-uint8_t sensor_current; // Temperature sensor ADC value (current measured/rouded)
+uint8_t sensor_current = 0x00; // Temperature sensor ADC value (current measured/rouded)
 #define SENSOR_ADC_SIZE 4 // Size of measures list
 uint8_t sensor_current_data[SENSOR_ADC_SIZE];
+
+uint8_t encoder_current = 40;
+
+uint16_t seconds_count = 0x00;
+uint8_t seconds_time_sec = 0x00;
+uint8_t seconds_time_min = 0x00;
+
+uint8_t servo_current = 0x00;
+
+float char_persent = 100.0 / 255.0;
 
 // =============================
 // Protection limits
@@ -43,26 +55,150 @@ uint8_t sensor_current_data[SENSOR_ADC_SIZE];
 #define UART_BAUD_DIV	(F_CPU/(16*UART_BAUD)-1)
 
 // =============================
+// Strings
+
+const uint8_t str_welcome[] PROGMEM = "BOLIER  INIT\0";
+const uint8_t str_no_value_2[] PROGMEM = "--\0";
+
+// =============================
 // ISR
 
 ISR(ADC_vect) //подпрограмма обработки прерывания от АЦП
 {
-	// sensor_value = ADCH >> 2;
 	// Calc avg sensor value
 	uint8_t adc = ADCH;
-	uint16_t adc_summ = 0x00;
-	for (int x=1; x<SENSOR_ADC_SIZE; x++)
+	if (0x00 == sensor_current)
 	{
-		sensor_current_data[x] = sensor_current_data[x-1];
-		adc_summ = adc_summ + sensor_current_data[x];
+		// First run, fill the array
+		for (int x=0; x<SENSOR_ADC_SIZE; x++)
+		{
+			sensor_current_data[x] = adc;
+		}
+		sensor_current = adc;
+	} else {
+		uint16_t adc_summ = 0x00;
+		for (int x=1; x<SENSOR_ADC_SIZE; x++)
+		{
+			sensor_current_data[x] = sensor_current_data[x-1];
+			adc_summ = adc_summ + sensor_current_data[x];
+		}
+		sensor_current_data[0] = adc;
+		adc_summ = adc_summ + adc;
+		adc_summ = adc_summ>>2; // adc_summ/4
+		
+		sensor_current = adc_summ;
 	}
-	sensor_current_data[0] = adc;
-	adc_summ = adc_summ + adc;
-	adc_summ = adc_summ>>2; // adc_summ/4
 	
-	sensor_current = adc_summ;
+	servo_current = sensor_current;
+	OCR1B = 125 + (servo_current>>1);
+}
+
+uint16_t timer0_counter_second = 0x0000;
+uint8_t timer0_counter_led_second = 0x00;
+
+ISR(TIMER0_OVF_vect)
+{
+	timer0_counter_second++;	
+	if (1000 == timer0_counter_second)
+	{
+		// Every second
+		timer0_counter_second = 0;
+		seconds_count++;
+		seconds_time_sec++;
+		if (60 == seconds_time_sec)
+		{
+			seconds_time_min++;
+			seconds_time_sec = 0;
+		}
+		
+		timer0_counter_led_second = 0x00;
+		
+		PORTD |= (1<<PD5);
+	}
 	
-	OCR1B = 125 + (sensor_current>>1);
+	if (100 == timer0_counter_led_second)
+	{
+		PORTD &= ~(1<<PD5);
+	} else {
+		timer0_counter_led_second++;
+	}
+	
+	encoderUpdate();
+	
+	TCNT0 = 125;
+}
+
+// =============================
+// Common
+
+void encoderUpdate(void)
+{
+	// Read new data
+	ENC_PollEncoder();
+	uint8_t enc_val = ENC_GetStateEncoder();
+	if (0x00 == enc_val)
+	{
+		// Do nothing, noe wnew
+	} else {
+		if (RIGHT_SPIN == enc_val)
+		{
+			if (encoder_current < 255)
+				encoder_current++;
+		}
+		if (LEFT_SPIN == enc_val)
+		{
+			if (encoder_current > 0)
+				encoder_current--;
+		}
+	}
+}
+
+void displayUpdate(void)
+{
+	//uint8_t display_servo_current = servo_current;
+	uint8_t display_servo_current = char_persent * (float)servo_current;
+	char temp_c[8];
+	itoa((uint8_t)display_servo_current, temp_c, 10);
+	LCDGotoXY(12,1);
+	if (display_servo_current < 100) LCDsendChar(' ');
+	if (display_servo_current < 10) LCDsendChar(' ');
+	lcdPrint(temp_c);
+	
+	uint8_t display_seconds_time_sec = seconds_time_sec;
+	uint8_t display_seconds_time_min= seconds_time_min;
+	LCDGotoXY(10,0);
+	if (display_seconds_time_min < 100) LCDsendChar(' ');
+	if (display_seconds_time_min < 10) LCDsendChar(' ');
+	itoa(display_seconds_time_min, temp_c, 10); lcdPrint(temp_c);
+	LCDsendChar(':');
+	LCDGotoXY(14,0);
+	if (display_seconds_time_sec < 10) LCDsendChar('0');
+	itoa(display_seconds_time_sec, temp_c, 10); lcdPrint(temp_c);
+	
+	uint8_t display_encoder_current = encoder_current;
+	itoa(display_encoder_current, temp_c, 10);
+	LCDGotoXY(3,0);
+	if (display_encoder_current < 10) LCDsendChar(' ');
+	lcdPrint(temp_c);
+}
+
+void displayModeTemp(void)
+{
+	LCDclr();
+	
+	LCDGotoXY(0,0);
+	//lcd_print("SET    ");
+	LCDsendChar(0x01);
+	// LCDGotoXY(5,0); LCDsendChar(0x00); LCDsendChar('C');
+	LCDGotoXY(6,0); LCDsendChar('%');// LCDsendChar('C');
+	LCDGotoXY(0,1);
+	LCDsendChar('t');
+	LCDGotoXY(5,1); LCDsendChar(0x00); LCDsendChar('C');
+	
+	LCDGotoXY(15,1); LCDsendChar('%');
+	
+	CopyStringtoLCD(str_no_value_2, 3, 0);
+	CopyStringtoLCD(str_no_value_2, 3, 1);
 }
 
 // =============================
@@ -71,9 +207,24 @@ ISR(ADC_vect) //подпрограмма обработки прерывания
 int main(void)
 {
 	// Init ports
+	DDRD = 0xFF;
 	DDRD |= (1<<PD4); // Servo PWM at OC1B
+	DDRD |= (1<<PD5); // Led at PD5
 	PORTD = 0x00; // LOW level on all pins port B
 	
+	DDRB  = 0xFF;
+	PORTB = 0x00;
+	
+	DDRC = 0x00; // C port IN
+	
+	// Enable timer vect
+	TIMSK = (1<<TOIE0);
+	
+	// Set common TIMER0
+	TCCR0 |= (0<<CS02) | (1<<CS01) | (1<<CS00);	// Prescaler 64
+	// set timer0 counter initial value to 125
+	TCNT0 = 125;
+
 	// Set PWM TIMER1
 	TCCR1A |= (1<<COM1B1)|(1<<WGM11);	// NON Inverted PWM 
 	TCCR1B |= 	(1<<WGM13)|(1<<WGM12)	// Fast PWM
@@ -84,12 +235,14 @@ int main(void)
 	
 	// Restore last PWM value?
 	
+	// reset timer counter
+	SFIOR |= (1<<PSR10);
+	
+	// ADC init
 	for (uint8_t x=0; x<SENSOR_ADC_SIZE; x++)
 	{
 		sensor_current_data[x] = 0x00;
 	}
-	
-	// Init ADC 
 	// ион - напряжение питания, выравнивание влево, нулевой канал
 	ADMUX = (0<<REFS1)|(1<<REFS0)|(1<<ADLAR)|(0<<MUX3)|(0<<MUX2)|(0<<MUX1)|(0<<MUX0);
 	// вкл. ацп, режим постоянного преобр., разрешение прерывания,частота преобр. = FCPU/128
@@ -98,15 +251,32 @@ int main(void)
 	// Start
 	ADCSRA |= (1<<ADSC);
 	
-	// Init LCD
-	LCDinit();
-	
-	// Init almost done
-	// Display welcome
+	// Encoder
+	ENC_InitEncoder();
 	
 	// Start ISR
 	sei();
 	
-	while (1) {}
+	_delay_ms(100);
+	
+	// Init LCD
+	LCDinit();
+	_delay_ms(100);
+	// Install custom chars
+	for(int i=0; i<lcd_chars_count; i++)
+	{
+		LCDdefinechar(lcd_chars + (i << 3), i);			
+	}
+	
+	// Init almost done
+	displayModeTemp();
+	// Display welcome
+	// CopyStringtoLCD(str_welcome, 2, 0);
+	
+	while (1) 
+	{
+		displayUpdate();
+		_delay_ms(100);
+	}
 	return 0;
 }
