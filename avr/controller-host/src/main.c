@@ -21,11 +21,13 @@
 #include "encoder.h"
 
 void encoderUpdate(void);
+void servoUpdate(void);
 
 // =============================
 // Global vars
 
 uint8_t sensor_current = 0x00; // Temperature sensor ADC value (current measured/rouded)
+uint8_t sensor_current_prev = 0x00;
 #define SENSOR_ADC_SIZE 4 // Size of measures list
 uint8_t sensor_current_data[SENSOR_ADC_SIZE];
 
@@ -38,6 +40,11 @@ uint8_t seconds_time_min = 0x00;
 uint8_t servo_current = 0x00;
 
 float char_persent = 100.0 / 255.0;
+
+uint8_t display_update_flag = 0x00;
+
+float Kp = 5;
+float Ki = 0.2;
 
 // =============================
 // Protection limits
@@ -63,7 +70,8 @@ const uint8_t str_no_value_2[] PROGMEM = "--\0";
 // =============================
 // ISR
 
-ISR(ADC_vect) //подпрограмма обработки прерывания от АЦП
+// ADC vector function
+ISR(ADC_vect)
 {
 	// Calc avg sensor value
 	uint8_t adc = ADCH;
@@ -74,7 +82,7 @@ ISR(ADC_vect) //подпрограмма обработки прерывания
 		{
 			sensor_current_data[x] = adc;
 		}
-		sensor_current = adc;
+		sensor_current = 0xFF - adc;
 	} else {
 		uint16_t adc_summ = 0x00;
 		for (int x=1; x<SENSOR_ADC_SIZE; x++)
@@ -86,20 +94,25 @@ ISR(ADC_vect) //подпрограмма обработки прерывания
 		adc_summ = adc_summ + adc;
 		adc_summ = adc_summ>>2; // adc_summ/4
 		
-		sensor_current = adc_summ;
+		sensor_current = 0xFF - adc_summ;
 	}
 	
-	servo_current = sensor_current;
-	OCR1B = 125 + (servo_current>>1);
+	if (sensor_current_prev != sensor_current)
+	{
+		display_update_flag = 1;
+		sensor_current_prev = sensor_current;
+	}
 }
 
 uint16_t timer0_counter_second = 0x0000;
 uint8_t timer0_counter_led_second = 0x00;
 
+// Timer0 vector function
+// 1 ms freq
 ISR(TIMER0_OVF_vect)
 {
 	timer0_counter_second++;	
-	if (1000 == timer0_counter_second)
+	if (1000 == timer0_counter_second) // 1 second counter
 	{
 		// Every second
 		timer0_counter_second = 0;
@@ -111,16 +124,11 @@ ISR(TIMER0_OVF_vect)
 			seconds_time_sec = 0;
 		}
 		
-		timer0_counter_led_second = 0x00;
+		display_update_flag = 1;
 		
 		PORTD |= (1<<PD5);
-	}
-	
-	if (100 == timer0_counter_led_second)
-	{
-		PORTD &= ~(1<<PD5);
-	} else {
-		timer0_counter_led_second++;
+		
+		servoUpdate();
 	}
 	
 	encoderUpdate();
@@ -130,6 +138,12 @@ ISR(TIMER0_OVF_vect)
 
 // =============================
 // Common
+
+void servoUpdate(void)
+{
+	servo_current = sensor_current;
+	OCR1B = 125 + ((0xFF - servo_current)>>1);
+}
 
 void encoderUpdate(void)
 {
@@ -155,8 +169,8 @@ void encoderUpdate(void)
 
 void displayUpdate(void)
 {
-	//uint8_t display_servo_current = servo_current;
-	uint8_t display_servo_current = char_persent * (float)servo_current;
+	uint8_t display_servo_current = servo_current;
+	//uint8_t display_servo_current = char_persent * (float)servo_current;
 	char temp_c[8];
 	itoa((uint8_t)display_servo_current, temp_c, 10);
 	LCDGotoXY(12,1);
@@ -180,6 +194,12 @@ void displayUpdate(void)
 	LCDGotoXY(3,0);
 	if (display_encoder_current < 10) LCDsendChar(' ');
 	lcdPrint(temp_c);
+	
+	uint8_t display_sensor_current = 25 + (sensor_current/10);
+	itoa(display_sensor_current, temp_c, 10);
+	LCDGotoXY(3,1);
+	if (display_sensor_current < 10) LCDsendChar(' ');
+	lcdPrint(temp_c);
 }
 
 void displayModeTemp(void)
@@ -189,13 +209,13 @@ void displayModeTemp(void)
 	LCDGotoXY(0,0);
 	//lcd_print("SET    ");
 	LCDsendChar(0x01);
-	// LCDGotoXY(5,0); LCDsendChar(0x00); LCDsendChar('C');
-	LCDGotoXY(6,0); LCDsendChar('%');// LCDsendChar('C');
+	LCDGotoXY(5,0); LCDsendChar(0x00); LCDsendChar('C');
+	//LCDGotoXY(6,0); LCDsendChar('C');// LCDsendChar('C');
 	LCDGotoXY(0,1);
 	LCDsendChar('t');
 	LCDGotoXY(5,1); LCDsendChar(0x00); LCDsendChar('C');
 	
-	LCDGotoXY(15,1); LCDsendChar('%');
+	LCDGotoXY(15,1); LCDsendChar('"');
 	
 	CopyStringtoLCD(str_no_value_2, 3, 0);
 	CopyStringtoLCD(str_no_value_2, 3, 1);
@@ -227,7 +247,7 @@ int main(void)
 
 	// Set PWM TIMER1
 	TCCR1A |= (1<<COM1B1)|(1<<WGM11);	// NON Inverted PWM 
-	TCCR1B |= 	(1<<WGM13)|(1<<WGM12)	// Fast PWM
+	TCCR1B |= 	(1<<WGM13)|(1<<WGM12)	// Phase PWM
 				| (1<<CS11)|(1<<CS10);	// Prescaler = 128
 
 	ICR1  = 2499;		// fPWM=50Hz (Period = 20ms Standard).
@@ -276,7 +296,7 @@ int main(void)
 	while (1) 
 	{
 		displayUpdate();
-		_delay_ms(100);
+		while (0x00 == display_update_flag) {};
 	}
 	return 0;
 }
