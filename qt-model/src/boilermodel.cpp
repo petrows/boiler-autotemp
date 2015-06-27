@@ -39,7 +39,14 @@ void BoilerModel::calc()
 	QVector<double> normalValues(normalFixDeep);
 	normalValues.fill(0);
 
-	int servoWait = 5.0 * (1.0/simStep);
+	int servoWait = 0.0 * (1.0/simStep);
+
+	double Pk = 8.0;
+	double Ik = 0.0;
+	double Dk = 1.0;
+
+	double ItPrev = 0.0;
+	double ErrorPrev = 0.0;
 
 	for (int step=0; step<simStepsCount; step++)
 	{
@@ -52,13 +59,7 @@ void BoilerModel::calc()
 		double stepDir = (tempOutput < tempSet) ? 1.0 : -1.0;
 		if (0.1 < tempDelta)
 		{
-			if (tempDelta > 10)
-			{
-				tempApply = 0.19 * 1.0;
-			} else {
-				tempApply = 0.2 * (1.0 * (tempDelta/10.0) );
-			}
-
+			tempApply = 0.2 * (1.0 * (tempDelta/10.0) );
 			tempApply = tempApply * stepDir;
 
 			// Calc normalzied value
@@ -83,28 +84,23 @@ void BoilerModel::calc()
 		servoWait--;
 		if (servoWait < 0)
 		{
-			double curTempDelta = std::abs(tempOutput - tempCurrent);
-			double curStepDir = (tempOutput < tempCurrent) ? 1.0 : -1.0;
+			servoWait = 3.0 * (1.0/simStep); // x second
+			
+			double curError = tempCurrent - tempOutput;
 
-			// Okay, test it
-			if (curTempDelta < 1)
-			{
-				// All is ok
-				servoWait = 3.0 * (1.0/simStep);
-			}
-			else if (curTempDelta < 3)
-			{
-				setServo(servoSet + (10 * curStepDir));
-				servoWait = 5.0 * (1.0/simStep);
-			}
-			else if (curTempDelta < 5)
-			{
-				setServo(servoSet + (15 * curStepDir));
-				servoWait = 5.0 * (1.0/simStep);
-			} else {
-				setServo(servoSet + ((1.0 * curTempDelta) * curStepDir));
-				servoWait = curTempDelta * 0.5 * (1.0/simStep);
-			}
+			double Pt = Pk * curError;
+			double It = ItPrev - (Ik * curError);
+			ItPrev = It;
+			double Dt = Dk * (curError - ErrorPrev);
+
+			ErrorPrev = curError;
+
+			double Ut = Pt
+					+ It
+					+ Dt;
+					;
+			
+			setServo(servoSet + Ut);
 		}
 
 		// Changed smth?

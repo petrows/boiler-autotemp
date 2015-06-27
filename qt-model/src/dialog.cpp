@@ -317,13 +317,14 @@ void Dialog::mkGraph()
 
 	ui->plot->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignLeft|Qt::AlignTop);
 	ui->plot->legend->setVisible(true);
-
+/*
 	mdl.reset();
 	mdl.tempCurrent = 40;
 	mdl.pressureCoef = 1.0;
 	repaintGraph("ideal");
 
 	mdl.reset();
+	mdl.simTime = 180;
 	mdl.tempCurrent = 35;
 	mdl.pressureCoef = 1.2;
 	mdl.paramsChanged.push_back(ParamChange(20.0, 0, 40));
@@ -335,14 +336,14 @@ void Dialog::mkGraph()
 	mdl.paramsChanged.push_back(ParamChange(20.0, 0, 30));
 	repaintGraph("hotrun-low");
 // return;
-
+*/
 	mdl.reset();
 	mdl.tempCurrent = 45;
 	mdl.pressureCoef = 0.5;
 	mdl.paramsChanged.push_back(ParamChange(20.0, 0, 40));
 	mdl.paramsChanged.push_back(ParamChange(30.0, 1.2, 0));
 	repaintGraph("plow-hi");
-
+/*
 	mdl.reset();
 	mdl.tempCurrent = 45;
 	mdl.pressureCoef = 0.5;
@@ -368,6 +369,7 @@ void Dialog::mkGraph()
 	// ui->plot->savePdf("graph-test.pdf", false, 800, 600);
 
 	// qDebug() << QImageWriter::supportedImageFormats();
+	*/
 }
 
 void Dialog::repaintGraph(QString name)
@@ -388,6 +390,6 @@ void Dialog::repaintGraph(QString name)
 
 	QString fname = QString("graph-%1").arg(name);
 
-	ui->plot->savePdf(fname + ".pdf", false, 800, 600);
+	//ui->plot->savePdf(fname + ".pdf", false, 800, 600);
 	// ui->plot->saveJpg(fname + ".jpg", false, 1600, 1200);
 }
