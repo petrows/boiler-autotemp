@@ -1,0 +1,16 @@
+# Writing all output to: Z:\devel\projects\boiler-autotemp\proteus\controller.log
+set pad_wire_necking on
+bus diagonal
+Stop the router before proceeding
+fanout 5
+Stop the router before proceeding
+route 5
+Stop the router before proceeding
+clean 2
+Stop the router before proceeding
+route 5 16
+Stop the router before proceeding
+clean 2
+Stop the router before proceeding
+filter 5
+Stop the router before proceeding

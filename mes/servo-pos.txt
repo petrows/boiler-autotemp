@@ -1,0 +1,2 @@
+Min - 128 (+97 base)
+Max - 28 (+97 base)

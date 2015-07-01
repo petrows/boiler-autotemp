@@ -12,9 +12,13 @@ SET(CMAKE_CXX_COMPILER "avr-g++")
 
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
-IF(NOT AVR_TYPE)
-	SET(AVR_TYPE "atmega16a")
+IF (AVR_TYPE STREQUAL "atmega8")
+	add_definitions(-D__AVR_ATmega8__)
 ENDIF()
+IF (AVR_TYPE STREQUAL "atmega16a")
+	add_definitions(-D__AVR_ATmega16__)
+ENDIF()
+
 MESSAGE(STATUS "AVR type [-DAVR_TYPE=...]: ${AVR_TYPE}")
 
 IF(NOT F_CPU)
@@ -29,7 +33,7 @@ MESSAGE(STATUS "FW upload tty [-DTTY=...]: ${TTY}")
 
 SET(COPT "-Os -DF_CPU=${F_CPU}")
 #SET(COPT "-g")
-SET(CSTANDARD "-std=gnu99")
+SET(CSTANDARD "-std=c99")
 SET(CDEBUG "-gstabs")
 SET(CWARN "-Wall -Wstrict-prototypes")
 SET(CTUNING "-fdata-sections -ffunction-sections -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums")

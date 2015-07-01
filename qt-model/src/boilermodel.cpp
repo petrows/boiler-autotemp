@@ -43,7 +43,7 @@ void BoilerModel::calc()
 
 	double Pk = 8.0;
 	double Ik = 0.0;
-	double Dk = 1.0;
+	double Dk = 2.0;
 
 	double ItPrev = 0.0;
 	double ErrorPrev = 0.0;
@@ -59,13 +59,13 @@ void BoilerModel::calc()
 		double stepDir = (tempOutput < tempSet) ? 1.0 : -1.0;
 		if (0.1 < tempDelta)
 		{
-			tempApply = 0.2 * (1.0 * (tempDelta/10.0) );
+			tempApply = 0.8 * (1.0 * (tempDelta/10.0) );
 			tempApply = tempApply * stepDir;
 
 			// Calc normalzied value
-			double lastSum = 0;
-			for (int x=0; x<normalFixDeep; x++) lastSum += normalValues[x];
-			tempApply = (lastSum + tempApply) / ((double)normalFixDeep + 1.0);
+			//double lastSum = 0;
+			//for (int x=0; x<normalFixDeep; x++) lastSum += normalValues[x];
+			//tempApply = (lastSum + tempApply) / ((double)normalFixDeep + 1.0);
 
 			tempOutput = tempOutput + tempApply;
 			// qDebug() << tempOutput;
@@ -89,7 +89,7 @@ void BoilerModel::calc()
 			double curError = tempCurrent - tempOutput;
 
 			double Pt = Pk * curError;
-			double It = ItPrev - (Ik * curError);
+			double It = ItPrev + (Ik * curError);
 			ItPrev = It;
 			double Dt = Dk * (curError - ErrorPrev);
 

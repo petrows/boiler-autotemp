@@ -20,36 +20,34 @@
 
 //Uncomment one of these if
 //LCD 4 bit interface is used (single port pins)
-#define LCD_4BIT 
+//#define LCD_4BIT 
 //LCD 8 bit interface is used (single port pins)
 //#define LCD_8BIT 
 //LCD 4 bit interface is used (mixed port pins)
-//#define LCD_4BIT_M 
+#define LCD_4BIT_M 
 //LCD 8 bit interface is used (mixed port pins)
 //#define LCD_8BIT_M 
 //******************************************************
 
-#define LCD_RS	2 	//define MCU pin connected to LCD RS
-#define LCD_RW	1 	//define MCU pin connected to LCD R/W
-#define LCD_E	0	//define MCU pin connected to LCD E
+#define LCD_RS	1 	//define MCU pin connected to LCD RS
+#define LCD_RW	2 	//define MCU pin connected to LCD R/W
+#define LCD_E	3	//define MCU pin connected to LCD E
 #define LCD_D0	0	//define MCU pin connected to LCD D0
-#define LCD_D1	1	//define MCU pin connected to LCD D1
-#define LCD_D2	2	//define MCU pin connected to LCD D2
-#define LCD_D3	3	//define MCU pin connected to LCD D3
+#define LCD_D1	0	//define MCU pin connected to LCD D1
+#define LCD_D2	0	//define MCU pin connected to LCD D2
+#define LCD_D3	0	//define MCU pin connected to LCD D3
 #define LCD_D4	4	//define MCU pin connected to LCD D4
 #define LCD_D5	5	//define MCU pin connected to LCD D5
 #define LCD_D6	6	//define MCU pin connected to LCD D6
 #define LCD_D7	7	//define MCU pin connected to LCD D7
 
-	
-
 #if defined (LCD_4BIT_M) || defined (LCD_8BIT_M)
-#define LDPRS PORTB		//RS pin assignment
-#define LDDRS DDRB
-#define LDPRW PORTB		//RW pin assignment
-#define LDDRW DDRB
-#define LDPE PORTB		//E pin assignment
-#define LDDE DDRB
+#define LDPRS PORTC		//RS pin assignment
+#define LDDRS DDRC
+#define LDPRW PORTC		//RW pin assignment
+#define LDDRW DDRC
+#define LDPE PORTC		//E pin assignment
+#define LDDE DDRC
 #define LDPD0 PORTD		//D0 pin assignment
 #define LDDD0 DDRD
 #define LDPD1 PORTD		//D1 pin assignment
