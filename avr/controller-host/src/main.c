@@ -172,7 +172,7 @@ void controlUpdate(void)
 	if (sensor_current < 20)
 	{
 		// Sensor ERROR
-		displayError(ERROR_NO_SENSOR);
+		//displayError(ERROR_NO_SENSOR);
 	}
 	
 	if (sensor_current != encoder_current)
@@ -315,6 +315,7 @@ int main(void)
 	DDRD = 0xFF;
 	DDRD |= (1<<PD4); // Servo PWM at OC1B
 	DDRD |= (1<<PD5); // Led at PD5
+	DDRD &= ~((1<<PD2)|(1<<PD3)); // Encoder pins IN
 	PORTD = 0x00; // LOW level on all pins port B
 	
 	DDRB  = 0xFF;
