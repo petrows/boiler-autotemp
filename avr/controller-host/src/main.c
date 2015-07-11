@@ -20,7 +20,8 @@ void uartSend(void);
 // =============================
 // Global vars
 
-uint8_t sensor_current = 0x00; // Temperature sensor ADC value (current measured/rouded)
+uint8_t sensor_current = 0x00; // Temperature sensor value (in Celsius)
+uint8_t sensor_current_raw = 0x00; // Temperature sensor value (raw value)
 uint8_t sensor_current_prev = 0x00;
 #define SENSOR_ADC_SIZE 4 // Size of measures list
 uint8_t sensor_current_data[SENSOR_ADC_SIZE];
@@ -78,6 +79,8 @@ ISR(ADC_vect)
 {
 	// Calc avg sensor value
 	uint8_t adc = ADCH;
+	uint8_t avg_value = 0x00;
+	
 	if (0x00 == sensor_current)
 	{
 		// First run, fill the array
@@ -85,7 +88,7 @@ ISR(ADC_vect)
 		{
 			sensor_current_data[x] = adc;
 		}
-		sensor_current = adc;
+		avg_value = adc;
 	} else {
 		uint16_t adc_summ = 0x00;
 		for (int x=1; x<SENSOR_ADC_SIZE; x++)
@@ -97,10 +100,11 @@ ISR(ADC_vect)
 		adc_summ = adc_summ + adc;
 		adc_summ = adc_summ>>2; // adc_summ/4
 		
-		sensor_current = adc_summ;
+		avg_value = adc_summ;
 	}
 	
-	sensor_current = sensorToTemp(sensor_current);
+	sensor_current_raw = avg_value;
+	sensor_current = sensorToTemp(avg_value);
 	
 	if (sensor_current_prev != sensor_current)
 	{
@@ -168,11 +172,11 @@ uint8_t sensorToTemp(uint8_t value)
 
 void controlUpdate(void)
 {
-	// Error?
-	if (sensor_current < 20)
+	// Error? Check the safe range of sensor
+	if (sensor_current_raw < 0x10 || sensor_current_raw > 0xF9)
 	{
 		// Sensor ERROR
-		//displayError(ERROR_NO_SENSOR);
+		displayError(ERROR_NO_SENSOR);
 	}
 	
 	if (sensor_current != encoder_current)
@@ -229,6 +233,8 @@ void encoderUpdate(void)
 			if (encoder_current > 0)
 				encoder_current--;
 		}
+		
+		display_update_flag = 0x01;
 	}
 }
 
@@ -340,6 +346,7 @@ int main(void)
 	OCR1B = 125 + 0; 	// 0% pos	
 	
 	// Restore last PWM value?
+	servoSet(0);
 	
 	// reset timer counter
 	SFIOR |= (1<<PSR10);
