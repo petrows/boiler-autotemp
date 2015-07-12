@@ -61,11 +61,15 @@ float char_persent = 100.0 / 255.0;
 volatile uint8_t display_update_flag = 0x00;
 
 // PiD regulator values
-float Pk = 0.7;
-float Ik = 0.5;
-float Dk = 0.5;
+float Pk = 0.5;
+float Ik = 0.1;
+float Dk = 0.0;
 float ItPrev = 0.0;
 float ErrorPrev = 0.0;
+
+// Temp sensor calibration values
+float temp40cal = 165; // Value of 40C (calibration)
+float tempCoef = 4; // Values/C size
 
 // =============================
 // Common
@@ -172,8 +176,6 @@ uint8_t sensorToTemp(uint8_t value)
 		return 0; // This is an error...
 	}
 	
-	float temp40cal = 165; // Value of 40C (calibration)
-	float tempCoef = 4; // Values/C size
 	float tempDiff = temp40cal-(float)value;
 	
 	float tempOut = 0;

@@ -140,8 +140,7 @@ void DialogRecorder::onPortRead()
 	csvList << QString::number(portData.sensor_cels);
 	csvList << QString::number(portData.sensor_raw);
 	csvList << QString::number(portData.servo);
-	csvList << "\n";
-	QString csvLine = csvList.join(",");
+	QString csvLine = csvList.join(",") + "\n";
 
 	logFile.write(csvLine.toUtf8());
 
