@@ -14,13 +14,13 @@ void BoilerModel::reset()
 	simTime = 600.0;
 
 	tempOutput = 30;
-	tempCurrent = 40;
+	tempCurrent = 30;
 	pressureCoef = 1.0;
 }
 
 void BoilerModel::calc()
 {
-	setServo(50);
+	setServo(00);
 
 	simStepsCount = simTime;
 
@@ -42,14 +42,15 @@ void BoilerModel::calc()
 	QVector<double> normalValues(normalFixDeep);
 	normalValues.fill(0);
 
-	int servoFreq = 10;
+	int servoFreq = 2;
 	int servoWait = 25;
+	double servoControlPos = 0.0;
 
 	double tempReal = tempOutput;
 
-	double Pk = 0.78;
-	double Ik = 0.02;
-	double Dk = 2.63;
+	double Pk = 0.2;
+	double Ik = 0.0;
+	double Dk = 0.2;
 
 	double ItPrev = 0.0;
 	double ErrorPrev = 0.0;
@@ -66,7 +67,7 @@ void BoilerModel::calc()
 		if (3.0 <= tempDelta)
 		{
 			tempApply = 0.5;
-		} else if (1.0 <= tempDelta) {
+		} else if (0.1 <= tempDelta) {
 			tempApply = 0.3 * tempDelta;
 		}
 
@@ -74,7 +75,7 @@ void BoilerModel::calc()
 		tempReal = tempReal + tempApply;
 
 		heaterDelayed.push_front(tempReal);
-		tempOutput = ceil(heaterDelayed.last());
+		tempOutput = round(heaterDelayed.last());
 		heaterDelayed.removeLast();
 
 		normalValues.push_back(tempApply);
@@ -105,8 +106,10 @@ void BoilerModel::calc()
 					+ It
 					+ Dt;
 					;
+
+			servoControlPos = servoControlPos + Ut;
 			
-			setServo(servoSet + Ut);
+			setServo(servoControlPos);
 		}
 
 		// Changed smth?

@@ -61,16 +61,16 @@ float char_persent = 100.0 / 255.0;
 volatile uint8_t display_update_flag = 0x00;
 
 // PiD regulator values
-float Pk = 0.78;
-float Ik = 0.00;
-float Dk = 0.50;
+float Pk = 0.2;
+float Ik = 0.0;
+float Dk = 0.2;
 float ItPrev = 0.0;
 float ErrorPrev = 0.0;
 
 float controlServo = 0.0;
 
 uint8_t timer_control_timeout = 15; // Seconds algo start delay
-uint8_t timer_control_period = 5; // Seconds algo calc-pid delay
+uint8_t timer_control_period = 1; // Seconds algo calc-pid delay
 
 // Temp sensor calibration values
 float temp40cal = 165; // Value of 40C (calibration)
