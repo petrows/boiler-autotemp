@@ -63,7 +63,7 @@ volatile uint8_t display_update_flag = 0x00;
 // PiD regulator values
 float Pk = 0.78;
 float Ik = 0.00;
-float Dk = 2.63;
+float Dk = 0.50;
 float ItPrev = 0.0;
 float ErrorPrev = 0.0;
 
