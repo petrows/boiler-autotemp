@@ -15,7 +15,29 @@ void controlUpdate(void);
 void servoSet(uint8_t pers);
 void displayError(uint8_t code);
 uint8_t sensorToTemp(uint8_t value); // Values - t(c)
+void uartSendByte(uint8_t byte);
 void uartSend(void);
+
+// =============================
+// Protection limits
+
+#define SERVO_BASE 97 // Base freq param (register value = 97 + pos)
+#define SERVO_MIN 28+SERVO_BASE
+#define SERVO_MAX 128+SERVO_BASE
+
+#define TEMP_SENSOR_MIN 20
+#define TEMP_SENSOR_MAX 50
+
+#define TEMP_USER_MIN 10
+#define TEMP_USER_MAX 110
+
+// =============================
+// UART config
+
+#define UART_BAUD 		9600L
+#define UART_BAUD_DIV	(F_CPU/(16*UART_BAUD)-1)
+
+volatile uint8_t uart_send_flag = 0x00;
 
 // =============================
 // Global vars
@@ -38,26 +60,12 @@ float char_persent = 100.0 / 255.0;
 
 volatile uint8_t display_update_flag = 0x00;
 
-float Kp = 5;
-float Ki = 0.2;
-
-// =============================
-// Protection limits
-
-#define SERVO_BASE 97 // Base freq param (register value = 97 + pos)
-#define SERVO_MIN 28+SERVO_BASE
-#define SERVO_MAX 128+SERVO_BASE
-
-#define TEMP_SENSOR_MIN 20
-#define TEMP_SENSOR_MAX 50
-
-// =============================
-// UART config
-
-#define UART_BAUD 		9600L
-#define UART_BAUD_DIV	(F_CPU/(16*UART_BAUD)-1)
-
-uint8_t uart_data[3];
+// PiD regulator values
+float Pk = 1.0;
+float Ik = 0.0;
+float Dk = 0.0;
+float ItPrev = 0.0;
+float ErrorPrev = 0.0;
 
 // =============================
 // Common
@@ -116,6 +124,8 @@ ISR(ADC_vect)
 uint16_t timer0_counter_second = 0x0000;
 uint8_t timer0_counter_led_second = 0x00;
 
+uint8_t timer0_control_counter = 0x00;
+
 // Timer0 vector function
 // 1 ms freq
 ISR(TIMER0_OVF_vect)
@@ -133,16 +143,20 @@ ISR(TIMER0_OVF_vect)
 			seconds_time_sec = 0;
 		}
 		
-		display_update_flag = 1;
+		timer0_control_counter++;
+		if (timer0_control_counter >= 5)
+		{
+			controlUpdate();
+			timer0_control_counter = 0;
+		}
 		
-		// PORTD |= (1<<PD5);
-		
-		controlUpdate();
+		display_update_flag = 0x01;
+		uart_send_flag = 0x01;
 	}
 	
 	encoderUpdate();
 	
-	TCNT0 = 125;
+	TCNT0 = 125; // Reset counter/timer register for new count
 }
 
 // =============================
@@ -158,16 +172,14 @@ uint8_t sensorToTemp(uint8_t value)
 		return 0; // This is an error...
 	}
 	
-	uint8_t temp40cal = 165; // Value of 40C (calibration)
+	float temp40cal = 147; // Value of 40C (calibration)
 	float tempCoef = 8.7; // Values/C size
-	float tempDiff = temp40cal-value;
+	float tempDiff = temp40cal-(float)value;
 	
-	if (value <= temp40cal)
-	{
-		return 40 + ((float)(tempDiff)/tempCoef);
-	} else {
-		return 40 - ((float)(-tempDiff)/tempCoef);
-	}
+	float tempOut = 0;
+	tempOut = 40.0 + (tempDiff/tempCoef);
+	
+	return tempOut;
 }
 
 void controlUpdate(void)
@@ -179,20 +191,32 @@ void controlUpdate(void)
 		displayError(ERROR_NO_SENSOR);
 	}
 	
-	if (sensor_current != encoder_current)
-	{
-		if (sensor_current < encoder_current)
-		{
-			if (servo_current < 100) servoSet(servo_current + 1);
-		} else {
-			if (servo_current > 0) servoSet(servo_current - 1);
-		}
-	}
+	float curError = (int)((int)encoder_current - (int)sensor_current);
 	
-	// Send current value
-	uart_data[2] = sensor_current;
-	uart_data[1] = servo_current;
-	uart_data[0] = 0xFF; // Enable send!
+	float Pt = Pk * curError;
+	float It = ItPrev + (Ik * curError);
+	ItPrev = It;
+	float Dt = Dk * (curError - ErrorPrev);
+	
+	ErrorPrev = curError;
+	
+	float Ut = Pt
+			+ It
+			+ Dt;
+	;
+	
+	int controlUt = Ut;
+	
+	if (0 != controlUt)
+	{
+		int currentServo = servo_current;
+		int servoNew = currentServo + controlUt;
+		
+		if (servoNew < 0) servoNew = 0;
+		if (servoNew > 100) servoNew = 100;
+		
+		servoSet(servoNew);
+	}
 }
 
 void servoSet(uint8_t pers)
@@ -204,14 +228,20 @@ void servoSet(uint8_t pers)
 	OCR1B = SERVO_MIN + pers_set;
 }
 
+void uartSendByte(uint8_t byte)
+{
+	while(!(UCSRA & (1<<UDRE)));
+	UDR = byte;
+}
+
 void uartSend(void)
 {
-	for (int x=0; x<3; x++)
-	{
-		while(!(UCSRA & (1<<UDRE)));
-		UDR=uart_data[x];
-		uart_data[x] = 0x00;
-	}
+	// Make The Parcel
+	uartSendByte(0xFF); // Start parcel
+	uartSendByte(encoder_current); // Selected temp
+	uartSendByte(sensor_current); // Current temp (in cels)
+	uartSendByte(sensor_current_raw); // Current temp (in ADC value/volts)
+	uartSendByte(servo_current); // Current servo pos
 }
 
 void encoderUpdate(void)
@@ -225,12 +255,12 @@ void encoderUpdate(void)
 	} else {
 		if (RIGHT_SPIN == enc_val)
 		{
-			if (encoder_current < 255)
+			if (encoder_current < TEMP_USER_MAX)
 				encoder_current++;
 		}
 		if (LEFT_SPIN == enc_val)
 		{
-			if (encoder_current > 0)
+			if (encoder_current > TEMP_USER_MIN)
 				encoder_current--;
 		}
 		
@@ -289,8 +319,6 @@ void displayUpdate(void)
 	LCDGotoXY(3,1);
 	if (display_sensor_current < 10) LCDsendChar(' ');
 	lcdPrint(temp_c);
-	
-	display_update_flag = 0x00;
 }
 
 void displayModeTemp(void)
@@ -380,16 +408,15 @@ int main(void)
 	_delay_ms(100);
 	
 	// Init LCD
-	LCDinit();
+	LCDinit();	
+	_delay_ms(100);	
+	LCDclr();
 	
-	_delay_ms(100);
 	// Install custom chars
 	for(int i=0; i<lcd_chars_count; i++)
 	{
 		LCDdefinechar(lcd_chars + (i << 3), i);			
 	}
-	
-	for (int x=0; x<3; x++) uart_data[x] = 0x00;
 	
 	// Init almost done
 	displayModeTemp();
@@ -398,14 +425,16 @@ int main(void)
 	
 	while (1) 
 	{
-		_delay_ms(1);
+		_delay_ms(100);
 		if (0x00 != display_update_flag)
 		{
+			display_update_flag = 0x00;
 			displayUpdate();
 		}
 		
-		if (uart_data[0] != 0x00)
+		if (0x00 != uart_send_flag)
 		{
+			uart_send_flag = 0x00;
 			uartSend();
 		}
 	}
