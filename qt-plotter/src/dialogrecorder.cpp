@@ -68,8 +68,6 @@ void DialogRecorder::on_serialStart_clicked()
 		// Stop the process
 		port.close();
 		logFile.close();
-		dataList.clear();
-		ui->plot->replot();
 		ui->serialDevice->setDisabled(false);
 		ui->serialOutput->setDisabled(false);
 		return;
@@ -84,7 +82,7 @@ void DialogRecorder::on_serialStart_clicked()
 	}
 
 	// Open log file
-	QString fName = QString("%1-%2.csv").arg(ui->serialOutput->text(), time(NULL));
+	QString fName = QString("%1-%2.csv").arg(ui->serialOutput->text()).arg(time(NULL));
 	qDebug() << fName;
 	logFile.setFileName(fName);
 	if (!logFile.open(QIODevice::WriteOnly))
@@ -95,6 +93,9 @@ void DialogRecorder::on_serialStart_clicked()
 
 	ui->serialDevice->setDisabled(true);
 	ui->serialOutput->setDisabled(true);
+
+	dataList.clear();
+	onUpdatePlot();
 }
 
 void DialogRecorder::onPortRead()
