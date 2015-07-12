@@ -61,11 +61,13 @@ float char_persent = 100.0 / 255.0;
 volatile uint8_t display_update_flag = 0x00;
 
 // PiD regulator values
-float Pk = 0.5;
-float Ik = 0.1;
-float Dk = 0.0;
+float Pk = 1.08;
+float Ik = 0.12;
+float Dk = 2.43;
 float ItPrev = 0.0;
 float ErrorPrev = 0.0;
+
+uint8_t timer_control_timeout = 15; // Seconds algo start delay
 
 // Temp sensor calibration values
 float temp40cal = 165; // Value of 40C (calibration)
@@ -147,11 +149,16 @@ ISR(TIMER0_OVF_vect)
 			seconds_time_sec = 0;
 		}
 		
-		timer0_control_counter++;
-		if (timer0_control_counter >= 5)
+		if (timer_control_timeout != 0)
 		{
-			controlUpdate();
-			timer0_control_counter = 0;
+			timer0_control_counter++;
+			if (timer0_control_counter >= 5)
+			{
+				controlUpdate();
+				timer0_control_counter = 0;
+			}
+		} else {
+			timer_control_timeout--;
 		}
 		
 		display_update_flag = 0x01;

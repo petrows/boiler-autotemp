@@ -17,7 +17,6 @@ class BoilerModel
 public:
     BoilerModel();
 
-    double simStep;
     double simTime;
 
 	double pressureCoef;

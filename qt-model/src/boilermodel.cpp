@@ -11,8 +11,7 @@ void BoilerModel::reset()
 {
 	paramsChanged.clear();
 
-	simTime = 90.0;
-	simStep = 0.1;
+	simTime = 300.0;
 
 	tempOutput = 25;
 	tempCurrent = 40;
@@ -23,7 +22,7 @@ void BoilerModel::calc()
 {
 	setServo(50);
 
-	simStepsCount = ceil(simTime / simStep);
+	simStepsCount = simTime;
 
 	qDebug() << "Sim steps " << simStepsCount;
 
@@ -36,40 +35,45 @@ void BoilerModel::calc()
 
 	int normalFixDeep = 5;
 
+	int heaterDelay = 20;
+	QList<double> heaterDelayed;
+	for (int x=0; x<heaterDelay; x++) heaterDelayed.push_back(tempOutput);
+
 	QVector<double> normalValues(normalFixDeep);
 	normalValues.fill(0);
 
-	int servoWait = 0.0 * (1.0/simStep);
+	int servoFreq = 5;
+	int servoWait = 25;
 
-	double Pk = 8.0;
-	double Ik = 0.0;
-	double Dk = 2.0;
+	double tempReal = tempOutput;
+
+	double Pk = 1.08;
+	double Ik = 0.12;
+	double Dk = 2.43;
 
 	double ItPrev = 0.0;
 	double ErrorPrev = 0.0;
 
 	for (int step=0; step<simStepsCount; step++)
 	{
-		double tms = simStep * (double)step;
+		double tms = step;
 
 		// Check the current 'ideal' temp and
 		// calc new temp value if needed
 		double tempApply = 0.0; // No change
-		double tempDelta = std::abs(tempOutput - tempSet);
-		double stepDir = (tempOutput < tempSet) ? 1.0 : -1.0;
+		double tempDelta = std::abs(tempReal - tempSet);
+		double stepDir = (tempReal < tempSet) ? 1.0 : -1.0;
 		if (0.1 < tempDelta)
 		{
-			tempApply = 0.8 * (1.0 * (tempDelta/10.0) );
+			tempApply = 0.3 * tempDelta;
 			tempApply = tempApply * stepDir;
 
-			// Calc normalzied value
-			//double lastSum = 0;
-			//for (int x=0; x<normalFixDeep; x++) lastSum += normalValues[x];
-			//tempApply = (lastSum + tempApply) / ((double)normalFixDeep + 1.0);
-
-			tempOutput = tempOutput + tempApply;
-			// qDebug() << tempOutput;
+			tempReal = tempReal + tempApply;
 		}
+
+		heaterDelayed.push_front(tempReal);
+		tempOutput = heaterDelayed.last();
+		heaterDelayed.removeLast();
 
 		normalValues.push_back(tempApply);
 		normalValues.pop_front();
@@ -82,9 +86,9 @@ void BoilerModel::calc()
 
 		// Check algo
 		servoWait--;
-		if (servoWait < 0)
+		if (servoWait <= 0)
 		{
-			servoWait = 3.0 * (1.0/simStep); // x second
+			servoWait = servoFreq; // x second
 			
 			double curError = tempCurrent - tempOutput;
 
