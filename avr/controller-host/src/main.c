@@ -61,11 +61,13 @@ float char_persent = 100.0 / 255.0;
 volatile uint8_t display_update_flag = 0x00;
 
 // PiD regulator values
-float Pk = 1.08;
-float Ik = 0.12;
-float Dk = 2.43;
+float Pk = 0.78;
+float Ik = 0.02;
+float Dk = 2.63;
 float ItPrev = 0.0;
 float ErrorPrev = 0.0;
+
+float controlServo = 0.0;
 
 uint8_t timer_control_timeout = 15; // Seconds algo start delay
 
@@ -149,7 +151,7 @@ ISR(TIMER0_OVF_vect)
 			seconds_time_sec = 0;
 		}
 		
-		if (timer_control_timeout != 0)
+		if (0 == timer_control_timeout)
 		{
 			timer0_control_counter++;
 			if (timer0_control_counter >= 5)
@@ -214,18 +216,12 @@ void controlUpdate(void)
 			+ Dt;
 	;
 	
-	int controlUt = Ut;
+	controlServo = controlServo + Ut;
 	
-	if (0 != controlUt)
-	{
-		int currentServo = servo_current;
-		int servoNew = currentServo + controlUt;
-		
-		if (servoNew < 0) servoNew = 0;
-		if (servoNew > 100) servoNew = 100;
-		
-		servoSet(servoNew);
-	}
+	if (controlServo < 0) controlServo = 0;
+	if (controlServo > 100) controlServo = 100;
+	
+	servoSet(controlServo);
 }
 
 void servoSet(uint8_t pers)
@@ -383,6 +379,7 @@ int main(void)
 	OCR1B = 125 + 0; 	// 0% pos	
 	
 	// Restore last PWM value?
+	controlServo = 0;
 	servoSet(0);
 	
 	// reset timer counter

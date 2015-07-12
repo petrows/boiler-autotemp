@@ -11,9 +11,9 @@ void BoilerModel::reset()
 {
 	paramsChanged.clear();
 
-	simTime = 300.0;
+	simTime = 600.0;
 
-	tempOutput = 25;
+	tempOutput = 30;
 	tempCurrent = 40;
 	pressureCoef = 1.0;
 }
@@ -35,7 +35,7 @@ void BoilerModel::calc()
 
 	int normalFixDeep = 5;
 
-	int heaterDelay = 20;
+	int heaterDelay = 30;
 	QList<double> heaterDelayed;
 	for (int x=0; x<heaterDelay; x++) heaterDelayed.push_back(tempOutput);
 
@@ -47,9 +47,9 @@ void BoilerModel::calc()
 
 	double tempReal = tempOutput;
 
-	double Pk = 1.08;
-	double Ik = 0.12;
-	double Dk = 2.43;
+	double Pk = 0.78;
+	double Ik = 0.02;
+	double Dk = 2.63;
 
 	double ItPrev = 0.0;
 	double ErrorPrev = 0.0;
@@ -63,16 +63,18 @@ void BoilerModel::calc()
 		double tempApply = 0.0; // No change
 		double tempDelta = std::abs(tempReal - tempSet);
 		double stepDir = (tempReal < tempSet) ? 1.0 : -1.0;
-		if (0.1 < tempDelta)
+		if (3.0 <= tempDelta)
 		{
+			tempApply = 0.5;
+		} else if (1.0 <= tempDelta) {
 			tempApply = 0.3 * tempDelta;
-			tempApply = tempApply * stepDir;
-
-			tempReal = tempReal + tempApply;
 		}
 
+		tempApply = tempApply * stepDir;
+		tempReal = tempReal + tempApply;
+
 		heaterDelayed.push_front(tempReal);
-		tempOutput = heaterDelayed.last();
+		tempOutput = ceil(heaterDelayed.last());
 		heaterDelayed.removeLast();
 
 		normalValues.push_back(tempApply);
