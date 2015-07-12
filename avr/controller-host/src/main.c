@@ -28,8 +28,8 @@ void uartSend(void);
 #define TEMP_SENSOR_MIN 20
 #define TEMP_SENSOR_MAX 50
 
-#define TEMP_USER_MIN 10
-#define TEMP_USER_MAX 110
+#define TEMP_USER_MIN 30
+#define TEMP_USER_MAX 60
 
 // =============================
 // UART config
@@ -62,7 +62,7 @@ volatile uint8_t display_update_flag = 0x00;
 
 // PiD regulator values
 float Pk = 0.78;
-float Ik = 0.02;
+float Ik = 0.00;
 float Dk = 2.63;
 float ItPrev = 0.0;
 float ErrorPrev = 0.0;
@@ -70,6 +70,7 @@ float ErrorPrev = 0.0;
 float controlServo = 0.0;
 
 uint8_t timer_control_timeout = 15; // Seconds algo start delay
+uint8_t timer_control_period = 5; // Seconds algo calc-pid delay
 
 // Temp sensor calibration values
 float temp40cal = 165; // Value of 40C (calibration)
@@ -153,11 +154,12 @@ ISR(TIMER0_OVF_vect)
 		
 		if (0 == timer_control_timeout)
 		{
-			timer0_control_counter++;
-			if (timer0_control_counter >= 5)
+			if (0 == timer0_control_counter)
 			{
 				controlUpdate();
-				timer0_control_counter = 0;
+				timer0_control_counter = timer_control_period;
+			} else {
+				timer0_control_counter--;
 			}
 		} else {
 			timer_control_timeout--;

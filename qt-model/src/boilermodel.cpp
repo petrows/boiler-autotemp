@@ -42,7 +42,7 @@ void BoilerModel::calc()
 	QVector<double> normalValues(normalFixDeep);
 	normalValues.fill(0);
 
-	int servoFreq = 5;
+	int servoFreq = 10;
 	int servoWait = 25;
 
 	double tempReal = tempOutput;
