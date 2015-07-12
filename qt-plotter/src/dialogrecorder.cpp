@@ -1,5 +1,6 @@
 #include "dialogrecorder.h"
 #include "ui_dialogrecorder.h"
+#include <time.h>
 #include "QDebug"
 
 DialogRecorder::DialogRecorder(QWidget *parent) :
@@ -62,6 +63,18 @@ DialogRecorder::~DialogRecorder()
 
 void DialogRecorder::on_serialStart_clicked()
 {
+	if (port.isOpen())
+	{
+		// Stop the process
+		port.close();
+		logFile.close();
+		dataList.clear();
+		ui->plot->replot();
+		ui->serialDevice->setDisabled(false);
+		ui->serialOutput->setDisabled(false);
+		return;
+	}
+
 	port.setPortName(ui->serialDevice->text());
 	port.setBaudRate(9600);
 	if (!port.open(QIODevice::ReadOnly))
@@ -69,6 +82,10 @@ void DialogRecorder::on_serialStart_clicked()
 		QMessageBox::warning(this, "Error!", "Error opening port!");
 		return;
 	}
+
+	// Open log file
+	QString fName = QString("%1-%2.csv").arg(ui->serialOutput->text(), time(NULL));
+	qDebug() << fName;
 
 	ui->serialDevice->setDisabled(true);
 	ui->serialOutput->setDisabled(true);

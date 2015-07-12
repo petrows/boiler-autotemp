@@ -38,6 +38,8 @@ private:
 	QCPGraph * grTempSet;
 
 	QList< SerialPortData > dataList;
+
+	QFile logFile;
 };
 
 #endif // DIALOGRECORDER_H

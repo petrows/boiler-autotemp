@@ -61,9 +61,9 @@ float char_persent = 100.0 / 255.0;
 volatile uint8_t display_update_flag = 0x00;
 
 // PiD regulator values
-float Pk = 1.0;
-float Ik = 0.0;
-float Dk = 0.0;
+float Pk = 0.7;
+float Ik = 0.5;
+float Dk = 0.5;
 float ItPrev = 0.0;
 float ErrorPrev = 0.0;
 
@@ -172,8 +172,8 @@ uint8_t sensorToTemp(uint8_t value)
 		return 0; // This is an error...
 	}
 	
-	float temp40cal = 147; // Value of 40C (calibration)
-	float tempCoef = 8.7; // Values/C size
+	float temp40cal = 165; // Value of 40C (calibration)
+	float tempCoef = 4; // Values/C size
 	float tempDiff = temp40cal-(float)value;
 	
 	float tempOut = 0;
@@ -185,7 +185,7 @@ uint8_t sensorToTemp(uint8_t value)
 void controlUpdate(void)
 {
 	// Error? Check the safe range of sensor
-	if (sensor_current_raw < 0x10 || sensor_current_raw > 0xF9)
+	if (sensor_current_raw > 0xF9)
 	{
 		// Sensor ERROR
 		displayError(ERROR_NO_SENSOR);

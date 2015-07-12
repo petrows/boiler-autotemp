@@ -138,7 +138,7 @@
       <item>
        <widget class="QLineEdit" name="serialOutput">
         <property name="text">
-         <string>file1.csv</string>
+         <string>file1</string>
         </property>
        </widget>
       </item>
