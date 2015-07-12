@@ -86,6 +86,12 @@ void DialogRecorder::on_serialStart_clicked()
 	// Open log file
 	QString fName = QString("%1-%2.csv").arg(ui->serialOutput->text(), time(NULL));
 	qDebug() << fName;
+	logFile.setFileName(fName);
+	if (!logFile.open(QIODevice::WriteOnly))
+	{
+		QMessageBox::warning(this, "Error!", "Error opening output file!");
+		return;
+	}
 
 	ui->serialDevice->setDisabled(true);
 	ui->serialOutput->setDisabled(true);
@@ -127,6 +133,16 @@ void DialogRecorder::onPortRead()
 	portData.sensor_raw = dataBuffer[3];
 	portData.servo = dataBuffer[4];
 	dataList.push_back(portData);
+
+	QStringList csvList;
+	csvList << QString::number(portData.selected_cels);
+	csvList << QString::number(portData.sensor_cels);
+	csvList << QString::number(portData.sensor_raw);
+	csvList << QString::number(portData.servo);
+	csvList << "\n";
+	QString csvLine = csvList.join(",");
+
+	logFile.write(csvLine.toUtf8());
 
 	ui->lcdServo->display(portData.servo);
 	ui->lcdTempRaw->display(portData.sensor_raw);
