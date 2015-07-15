@@ -10,6 +10,9 @@
 #define HI(x) 		((x)>>8)
 #define LO(x) 		((x)& 0xFF) 
 
+#define MAX(x, y)	(((x) > (y)) ? (x) : (y))
+#define MIN(x, y)	(((x) < (y)) ? (x) : (y))
+
 void lcdPrint(const char * str)
 {
 	while (0x00 != *str) { LCDsendChar(*str); str++; }

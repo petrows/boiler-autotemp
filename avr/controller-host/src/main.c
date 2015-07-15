@@ -2,6 +2,7 @@
 #include <util/delay.h>
 #include <avr/interrupt.h> 
 #include <avr/cpufunc.h>
+#include <avr/eeprom.h>
 
 #include <stdlib.h>
 
@@ -17,6 +18,13 @@ void displayError(uint8_t code);
 uint8_t sensorToTemp(uint8_t value); // Values - t(c)
 void uartSendByte(uint8_t byte);
 void uartSend(void);
+
+// EEPROM address of user settings
+// Last selected temp
+#define EEPROM_CFG_TEMP 0x01
+// Last servo pos
+uint8_t eeprom_servo_pos = 0x00;
+#define EEPROM_CFG_SERVO 0x02
 
 // =============================
 // Protection limits
@@ -55,6 +63,7 @@ uint8_t seconds_time_sec = 0x00;
 uint8_t seconds_time_min = 0x00;
 
 uint8_t servo_current = 0x00;
+uint8_t servo_eeprom = 0x00;
 
 float char_persent = 100.0 / 255.0;
 
@@ -150,6 +159,13 @@ ISR(TIMER0_OVF_vect)
 		{
 			seconds_time_min++;
 			seconds_time_sec = 0;
+			
+			if ((MAX(servo_eeprom, servo_current) - MIN(servo_eeprom, servo_current)) >= 10)
+			{
+				// Diff pos is more than 10 - save it to flash
+				servo_eeprom = servo_current;
+				eeprom_update_byte((uint8_t*)EEPROM_CFG_SERVO, servo_current);
+			}
 		}
 		
 		if (0 == timer_control_timeout)
@@ -270,7 +286,7 @@ void encoderUpdate(void)
 			if (encoder_current > TEMP_USER_MIN)
 				encoder_current--;
 		}
-		
+		eeprom_update_byte((uint8_t*)EEPROM_CFG_TEMP , encoder_current);
 		display_update_flag = 0x01;
 	}
 }
@@ -381,8 +397,13 @@ int main(void)
 	OCR1B = 125 + 0; 	// 0% pos	
 	
 	// Restore last PWM value?
-	controlServo = 0;
-	servoSet(0);
+	servo_eeprom = eeprom_read_byte((uint8_t *)EEPROM_CFG_SERVO);
+	if (servo_eeprom < 0 || 100 < servo_eeprom) servo_eeprom = 0x00;
+	controlServo = servo_eeprom;
+	servoSet(servo_eeprom);
+	
+	encoder_current = eeprom_read_byte((uint8_t *)EEPROM_CFG_TEMP);
+	if ( encoder_current < TEMP_USER_MIN || TEMP_USER_MAX < encoder_current) encoder_current = TEMP_USER_MIN;
 	
 	// reset timer counter
 	SFIOR |= (1<<PSR10);
