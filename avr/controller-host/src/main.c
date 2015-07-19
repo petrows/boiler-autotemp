@@ -429,12 +429,10 @@ int main(void)
 	// Start ISR
 	sei();
 	
-	_delay_ms(100);
+	_delay_ms(10);
 	
-	// Init LCD
+	// Init LCD (many-times)
 	LCDinit();
-	
-	_delay_ms(100);
 	
 	// Install custom chars
 	for(int i=0; i<lcd_chars_count; i++)

@@ -168,13 +168,19 @@ void LCDinit(void)//Initializes LCD
 	LDDE |=1<<LCD_E;
    //---------one------
 	LCDMix_4Bit(0b00110000);
-	LDPE |=1<<LCD_E;		
+	LDPE |=1<<LCD_E;
 	_delay_ms(1);
 	LDPE &=~(1<<LCD_E);
 	_delay_ms(1);
 	//-----------two-----------
 	LCDMix_4Bit(0b00110000);
-	LDPE |=1<<LCD_E;		
+	LDPE |=1<<LCD_E;
+	_delay_ms(1);
+	LDPE &=~(1<<LCD_E);
+	_delay_ms(1);
+	//-----------two2-----------
+	LCDMix_4Bit(0b00110000);
+	LDPE |=1<<LCD_E;
 	_delay_ms(1);
 	LDPE &=~(1<<LCD_E);
 	_delay_ms(1);
