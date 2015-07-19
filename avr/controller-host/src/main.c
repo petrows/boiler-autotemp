@@ -16,7 +16,7 @@ void controlUpdate(void);
 void servoSet(uint8_t pers);
 void displayError(uint8_t code);
 uint8_t sensorToTemp(uint8_t value); // Values - t(c)
-void uartSendByte(uint8_t byte);
+
 void uartSend(void);
 
 // EEPROM address of user settings
@@ -251,12 +251,6 @@ void servoSet(uint8_t pers)
 	OCR1B = SERVO_MIN + pers_set;
 }
 
-void uartSendByte(uint8_t byte)
-{
-	while(!(UCSRA & (1<<UDRE)));
-	UDR = byte;
-}
-
 void uartSend(void)
 {
 	// Make The Parcel
@@ -369,16 +363,17 @@ void displayModeTemp(void)
 int main(void)
 {
 	// Init ports
-	DDRD = 0xFF;
-	DDRD |= (1<<PD4); // Servo PWM at OC1B
-	DDRD |= (1<<PD5); // Led at PD5
-	DDRD &= ~((1<<PD2)|(1<<PD3)); // Encoder pins IN
-	PORTD = 0x00; // LOW level on all pins port B
+	DDRD = 0xFF;	
+	BIT0(DDRD, PD2); // Encoder pins IN
+	BIT0(DDRD, PD3);
+	PORTD = 0x00;
 	
 	DDRB  = 0xFF;
 	PORTB = 0x00;
 	
-	DDRC = 0x00; // C port IN
+	DDRC = 0xFF; // C port almost out 
+	BIT0(DDRC,PD0); // ADC pin IN
+	PORTC = 0x00; // Low level
 	
 	// Enable timer vect
 	TIMSK = (1<<TOIE0);
@@ -437,9 +432,9 @@ int main(void)
 	_delay_ms(100);
 	
 	// Init LCD
-	LCDinit();	
-	_delay_ms(100);	
-	LCDclr();
+	LCDinit();
+	
+	_delay_ms(100);
 	
 	// Install custom chars
 	for(int i=0; i<lcd_chars_count; i++)
